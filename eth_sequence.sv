@@ -39,6 +39,8 @@ class base_seq extends uvm_sequence #(eth_seq_item);
   bit pause_sel;
   bit pfc_sel;  
   bit pause_rsd_en;
+  static bit [47:0] temp_da1;
+  static bit [47:0] temp_da2; 
   
   function new (string name = "base_seq");
     super.new(name);
@@ -95,7 +97,19 @@ class gmii_eth_normal_frame_seq extends base_seq;
         req.randomize() with {sa == p_sequencer.mac_addr;       
                               ether_type == c_ether_type;};  
    // end       
-    
+     //Fixing DA constant
+    //if(trans_count % 2 != 0) begin
+    //  if(trans_count == 1)
+    //    temp_da1 = req.da;
+    //  else
+    //    req.da = temp_da1;
+    //end else begin
+    //  if(trans_count == 2)
+    //    temp_da2 = req.da;
+    //  else
+    //    req.da = temp_da2;
+    //end      
+
       req.mode = mode;
       
       if(custom_da)
@@ -188,7 +202,7 @@ class gmii_eth_normal_frame_seq extends base_seq;
       
    
       //CORRUPT FCS
-    if(this.corrupt_fcs_en == 1 && error_pkt_no == exact_pkt) begin
+    if(this.corrupt_fcs_en == 1 && (error_pkt_no == exact_pkt || send_runt == 1 || req.ether_type > 1518)) begin
           req.corrupt_fcs_en = 1;
           `uvm_info("CORRUPT FCS TX",$sformatf("Sending bad fcs in Transaction = %0d",exact_pkt),UVM_LOW)
       end else

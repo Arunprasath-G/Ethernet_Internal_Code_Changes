@@ -16,6 +16,8 @@ interface eth_ui_interface();
   logic [31:0] tx_vlan_count;
   logic [31:0] tx_ipg_violation_count;
   logic [31:0] tx_pfc_count;
+  logic [31:0] tx_carrier_ext_count;
+  
   
   //Rx Counters
   logic [31:0] rx_good_pkt_count;
@@ -33,6 +35,8 @@ interface eth_ui_interface();
   logic [31:0] rx_drop_count;
   logic [31:0] rx_ipg_violation_count;
   logic [31:0] rx_pfc_count;
+  logic [31:0] rx_carrier_ext_count;
+  
   
 endinterface
 

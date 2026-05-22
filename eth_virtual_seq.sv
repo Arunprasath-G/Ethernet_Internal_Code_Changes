@@ -41,6 +41,7 @@ class base_virtual_seq extends uvm_sequence;
   int scount;
   bit pause_rsd_en;
   bit pause_stress_en;
+  bit middle_coll_en;  
   
    
   

@@ -3,7 +3,7 @@ class eth_test extends uvm_test;
   
   eth_env env_h;
   virtual_seq v_seq;
-  int no_of_pkts = 10;
+  int no_of_pkts = 100;
 
   
   function new(string name = "eth_test", uvm_component parent = null);
@@ -676,7 +676,6 @@ class gmii_eth_pause_reserved_opcode_test extends eth_test;
         vseq.ether_type = 46;
     	vseq.pause_normal_traffic=1;
         vseq.pfc_with_vlan_traffic =0;
-        vseq.pause_rsd_en=1;
     	vseq.start(env_h.vseqr_h);
   //  end   
     phase.drop_objection(this);
@@ -685,10 +684,11 @@ class gmii_eth_pause_reserved_opcode_test extends eth_test;
   
 endclass
 
-class gmii_eth_pause_stress_test extends eth_test;
-  `uvm_component_utils(gmii_eth_pause_stress_test)
+
+class gmii_eth_collision_in_middle_bytes_test extends eth_test;
+  `uvm_component_utils(gmii_eth_collision_in_middle_bytes_test)
   
-  function new (string name = "gmii_eth_pause_stress_test", uvm_component parent = null);
+  function new (string name = "gmii_eth_collision_in_middle_bytes_test", uvm_component parent = null);
     super.new(name,parent);
   endfunction
 
@@ -696,23 +696,78 @@ class gmii_eth_pause_stress_test extends eth_test;
     super.build_phase(phase);
   endfunction    
   
-   task run_phase(uvm_phase phase);
+  task run_phase(uvm_phase phase);
     virtual_seq vseq;
     
-    phase.raise_objection(this); 
-    	vseq = virtual_seq::type_id::create("vseq");
-    	vseq.mode = 1;
-    	vseq.no_of_pkts = no_of_pkts;
-        vseq.payload_rand_en = 0;
-        vseq.ether_type = 46;
-    	vseq.pause_normal_traffic=1;
-        vseq.pfc_with_vlan_traffic =0;
-        vseq.pause_stress_en =1;
-    	vseq.start(env_h.vseqr_h);  
+    phase.raise_objection(this);  
+    repeat(this.no_of_pkts) begin
+      vseq = virtual_seq::type_id::create("vseq");    
+      vseq.mode = 0;
+      vseq.payload_rand_en = 1;
+      vseq.coll_en = 1;  
+      vseq.middle_coll_en = 1;
+      vseq.padding_en =1;
+      vseq.start(env_h.vseqr_h);    
+    end
     phase.drop_objection(this);
-     
   endtask    
   
 endclass
 
 
+class gmii_eth_broadcast_frame_test extends eth_test;
+  `uvm_component_utils(gmii_eth_broadcast_frame_test)
+  
+  function new (string name = "gmii_eth_broadcast_frame_test", uvm_component parent = null);
+    super.new(name,parent);
+  endfunction
+
+  function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+  endfunction    
+  
+  task run_phase(uvm_phase phase);
+    virtual_seq vseq;   
+    phase.raise_objection(this);  
+    repeat(this.no_of_pkts) begin
+      vseq = virtual_seq::type_id::create("vseq");
+      vseq.mode = 0;
+      vseq.payload_rand_en = 1;
+      vseq.custom_da = 1;
+      vseq.da = 48'hFF_FF_FF_FF_FF_FF;
+      vseq.padding_en =1;
+      vseq.start(env_h.vseqr_h);    
+    end
+    phase.drop_objection(this);
+  endtask    
+  
+endclass
+
+
+class gmii_eth_jabber_frame_test extends eth_test;
+  `uvm_component_utils(gmii_eth_jabber_frame_test)
+  
+  function new (string name = "gmii_eth_jabber_frame_test", uvm_component parent = null);
+    super.new(name,parent);
+  endfunction
+
+  function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+  endfunction    
+  
+  task run_phase(uvm_phase phase);
+    virtual_seq vseq;   
+    phase.raise_objection(this);  
+    repeat(this.no_of_pkts) begin
+      vseq = virtual_seq::type_id::create("vseq");
+      vseq.mode = 1;
+      vseq.payload_rand_en = 0;
+      vseq.padding_en =1;
+      vseq.corrupt_fcs_en = 1;
+      vseq.ether_type = $urandom_range(1522, 2000);
+      vseq.start(env_h.vseqr_h);    
+    end
+    phase.drop_objection(this);
+  endtask    
+  
+endclass

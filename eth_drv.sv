@@ -43,12 +43,14 @@ class eth_drv extends uvm_driver#(eth_seq_item);
     wait(v_intf.rst);
    
     fork
-      pause_timer();
+      //pause_timer();
       //pfc_timer();
     join_none       
     forever begin    
     //forever begin
-      wait(globals::pause_flag[mac_id]==0);
+      if(!globals::pause_flag.exists(this.mac_id))
+         globals::pause_flag[this.mac_id] = 0;    
+      wait(globals::pause_flag[this.mac_id]==0);
       seq_item_port.get_next_item(tr);
       frame_pack(tr);
       retry_q = frame_q;
@@ -66,12 +68,9 @@ class eth_drv extends uvm_driver#(eth_seq_item);
   	int local_pause_cycles;
   	int prev_pause_value;
 
-  	forever begin
-      $display("5555555555555555555555555555555555555");
+      forever begin
     	wait(globals::pause_flag[mac_id] == 1);
-      $display("33333333333333333333333333");
     	wait(frame_in_progress == 0);
-      $display("444444444444444444444444444");
     	prev_pause_value = globals::pause_value[mac_id];
 
     	local_pause_cycles = prev_pause_value * PAUSE_QUANTA_CYCLES;
@@ -210,13 +209,7 @@ class eth_drv extends uvm_driver#(eth_seq_item);
   endtask
   
   task pfc_check(eth_seq_item tr);
-  	`uvm_info("DRV_DEBUG",
-              $sformatf("mac_id=%0d PCP=%0d flag=%0d value=%0d",
-			             mac_id,
-						 tr.PCP,
-						 globals::pfc_flag[mac_id][tr.PCP],
-                         globals::pfc_value[mac_id][tr.PCP]),
-			 UVM_LOW)
+
     if(tr.vlan_en && !tr.pfc_frame_en && !tr.pause_frame_en) begin
 
       if(globals::pfc_flag[mac_id][tr.PCP] && globals::pfc_value[mac_id][tr.PCP] > 0) begin
@@ -375,7 +368,7 @@ class eth_drv extends uvm_driver#(eth_seq_item);
     end
     else begin
       //Payload packing
-      for(int i = (tr.payload.size() - 1);i >= 0 ;i--)
+      for(int i = (tr.payload.size()- 1);i >= 0 ;i--)
         frame_q[idx++] = tr.payload[i];
       //Zero Padding if payload is less than 46 bytes
       if(tr.vlan_en == 1)
@@ -384,7 +377,7 @@ class eth_drv extends uvm_driver#(eth_seq_item);
         pad_cnt = 46;
       
       if(tr.payload.size() < pad_cnt && tr.padding_en == 1) begin
-        for(int i = (tr.payload.size() - 1); i < pad_cnt; i++)
+        for(int i = tr.payload.size(); i < pad_cnt; i++)
           frame_q[idx++] = 0;
       end
     end
