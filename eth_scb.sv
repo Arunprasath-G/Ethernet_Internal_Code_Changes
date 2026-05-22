@@ -77,6 +77,7 @@ function void write_ap_1(eth_seq_item tx_tr);
   // Store TX transaction
   //-----------------------------------------
   tx_count[src_id][dst_id]++;
+  $display("-------------------2222222222222222 %0d",tx_count[src_id][dst_id]);
 
   tx_aa[src_id][dst_id][tx_count[src_id][dst_id]] = tx_tr;
 
@@ -119,13 +120,12 @@ endfunction
   // Use rx_count as transaction number
   txn_no = rx_tr.rx_count;
 
-  if(!tx_aa.exists(src_id) ||
-     !tx_aa[src_id].exists(dst_id) ||
-     !tx_aa[src_id][dst_id].exists(txn_no)) begin
+  if((!tx_aa.exists(src_id) || !tx_aa[src_id].exists(dst_id) || !tx_aa[src_id][dst_id].exists(txn_no))) begin
 
     `uvm_error("SCB_EXTRA_RX",
       $sformatf("RX received but matching TX not found: RX[%0d][%0d][%0d]",
                 src_id, dst_id, txn_no))
+		//rx_tr.print();
     return;
   end
 

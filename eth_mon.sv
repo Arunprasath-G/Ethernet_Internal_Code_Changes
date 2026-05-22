@@ -463,28 +463,59 @@ else begin
 
 
 end
-      //------------------------------------------------
-      // PAUSE FRAME INFO
-      //------------------------------------------------
-      if(tr.pause_frame_en &&
-         tr.ether_type == 16'h8808 &&
-         tr.pause_time != 0) begin
 
-        globals::pause_value[mac_addr] = tr.pause_time;
-        globals::pause_flag[mac_addr]  = 1;
+	//------------------------------------------------
+// BLOCK PAUSE FROM SCOREBOARD
+//------------------------------------------------
 
-        `uvm_info("PAUSE_FRAME_TX",
-          $sformatf(
-            "Pause frame opcode=%0h pause_time=%0d",
-            tr.pause_opc,
-            tr.pause_time),
-          UVM_LOW)
+     if(tr.pause_frame_en &&
+   tr.ether_type == 16'h8808 &&
+   tr.pause_opc == 16'h0001) begin
+ 
+   globals::pause_value[mac_addr] = tr.pause_time;
+   globals::pause_flag[mac_addr]  = 1;
+   globals::pause_update[mac_addr] =1;
+ 
+   globals::v_uif[mac_addr].tx_pause_count++;
+ 
+   `uvm_info("TX_PAUSE_BLOCK",
+      $sformatf(
+      "Pause frame blocked pause_time=%0d",
+      tr.pause_time),
+      UVM_LOW)
+ 
+   continue;
+end
 
+ 
+	//------------------------------------------------
+// BLOCK PFC FROM SCOREBOARD
+//------------------------------------------------
+if(tr.pfc_frame_en &&
+   tr.ether_type == 16'h8808 &&
+   tr.pause_opc == 16'h0005) begin
+ 
+   globals::v_uif[mac_addr].tx_pfc_count++;
+ 
+   for(int i=0;i<8;i++) begin
+      if(tr.priority_en_vector[i]) begin
+         globals::pfc_value[mac_addr][i] =
+         tr.pfc_pause_time[i];
+ 
+         globals::pfc_flag[mac_addr][i] = 1;
       end
-
+   end
+ 
+   `uvm_info("TX_PFC_BLOCK",
+      "PFC frame blocked from scoreboard",
+      UVM_LOW)
+ 
+   continue;
+end
       //------------------------------------------------
       // WRITE ALWAYS
       //------------------------------------------------
+      $display("3333333333333333333333333333333333333");
       tx_ap.write(tr);
 
     end
@@ -615,6 +646,7 @@ endtask
           tr = eth_seq_item::type_id::create("tr", this);
           rx_pkt_count++;
 	  tr.rx_count=rx_pkt_count;
+	  $display("-------------------1111111111111111 %0d",tr.rx_count);
           
          //------------------------------------------------
       // DA extraction
@@ -945,6 +977,8 @@ end
             
              globals::pause_value[mac_addr] = tr.pause_time;
              globals::pause_flag[mac_addr]  = 1;
+	     globals::pause_update[mac_addr]  = 1;
+	      globals::v_uif[mac_addr].rx_pause_count++;
 
 
             `uvm_info("PAUSE_FRAME_RX",
@@ -978,7 +1012,7 @@ end
               `uvm_warning("PAUSE_TIME",
                 "Pause time is ZERO")
             end
-
+       continue;
           end
           
           
@@ -1007,31 +1041,17 @@ end
               if(tr.priority_en_vector[i]) begin
                 globals::pfc_value[mac_addr][i] = tr.pfc_pause_time[i];
                 globals::pfc_flag[mac_addr][i] = 1;
+		 globals::v_uif[mac_addr].rx_pfc_count++;
+
 
                 `uvm_info("PFC_RX", $sformatf( "Priority=%0d Pause_Time=%0d", i, tr.pfc_pause_time[i]),UVM_LOW)
 
               end
             end
+	    continue;
           end
           
-      //------------------------------------------------
-      // PAUSE FRAME INFO
-      //------------------------------------------------
-      if(tr.ether_type == 16'h8808 && tr.pause_opc == 16'h0001) begin
-        globals::pause_value[mac_id] = tr.pause_time;
-        globals::pause_flag[mac_id]  = 1;
-        globals:: pause_update[mac_id]=1;
-  
-
-        `uvm_info("PAUSE_FRAME_TX",
-          $sformatf(
-            "Pause frame opcode=%0h pause_time=%0d,mac_addr=%d",
-            tr.pause_opc,
-            tr.pause_time,mac_id),
-          UVM_LOW)
-
-      end    
-          
+           
           
           if(tr.da == 48'hFF_FF_FF_FF_FF_FF)
             globals::v_uif[mac_addr].rx_broadcast_count++;
@@ -1414,4 +1434,6 @@ if(tr.ether_type <= 16'd1500) begin
 
 endfunction
 endclass
+
+
 

@@ -40,7 +40,7 @@ class base_virtual_seq extends uvm_sequence;
   int count;
   int scount;
   bit pause_rsd_en;
-  bit pause_stress_en;
+  bit pause_update_time_en;
   bit middle_coll_en;  
   
    
@@ -88,50 +88,103 @@ class virtual_seq extends base_virtual_seq;
 
   end
   
-   else begin
+else begin
+
      if(mode==1) begin
+
        //------------------pause+normal_traffic--------------
+
        if(pause_normal_traffic) begin
+
   	   	fork
+ 
+	 	    begin
 
- 	 	begin
           repeat(this.no_of_pkts) begin
+
       			seq1 = gmii_eth_normal_frame_seq::type_id::create("seq1");
+
       			apply_config(seq1);
-            if(count==3 && !this.pause_stress_en) begin
-              $display("11111111111111111111111111111111111");
-      			seq1.pause_sel = 1;
+
+            if(count==3 || count==5 ) begin
+
+                seq1.pause_sel = 1;
+
+                seq1.pause_time=10;
+
                 seq1.pause_rsd_en =this.pause_rsd_en;   
+
+            end
+ 
+            else if(this.pause_update_time_en  && ((count==4) ||( count==5) ||( count==7)) ) 	begin																													  seq1.pause_sel =1;
+
+                 seq1.pause_time=$urandom_range(1,10);
+
+            end
+
+            else if(count==10 && !pause_update_time_en ) begin
+
+              seq1.pause_sel=1;
+
+              seq1.pause_time=100;
+
+            end
+
+            else if(count==12 && !pause_update_time_en ) begin
+
+              seq1.pause_sel=1;
+
+              seq1.pause_time=0;
+
             end 
-            else if(this.pause_stress_en && (count==4 || count==5 || count==7))  																																					//for_pause_stress_test_case
-                seq1.pause_sel =1;
+
             else        
+
               seq1.pause_sel=0;
-            
-      		seq1.start(p_sequencer.mac[0]);
-          count++;  
+
+      		  seq1.start(p_sequencer.mac[0]);
+
+            count++;  
+
           end
-          
-  		end
 
-   	   begin
+  	  	end
+ 
+   	    begin
+
          repeat(this.no_of_pkts) begin
-       		seq2 = gmii_eth_normal_frame_seq::type_id::create("seq2");
-      		apply_config(seq2);
-           if(scount==2) begin
-             seq2.pause_sel=1;
-             seq2.pause_rsd_en =this.pause_rsd_en;
-            end  
-            else
-             seq2.pause_sel = 0;//($urandom_range(1,2) % 2);
-      		seq2.start(p_sequencer.mac[1]);
-           scount++;
-      	end
-  	  end
 
-	join
-       end 
-    //---------------- VLAN TRAFFIC+pfc ----------------   
+       		seq2 = gmii_eth_normal_frame_seq::type_id::create("seq2");
+
+      		apply_config(seq2);
+
+           if(scount==3 || scount==5) begin
+
+               seq2.pause_sel=1;
+
+               seq2.pause_time=10;
+
+               seq2.pause_rsd_en =this.pause_rsd_en;
+
+           end  
+
+           else
+
+             seq2.pause_sel = 0;//($urandom_range(1,2) % 2);
+
+      		 seq2.start(p_sequencer.mac[1]);
+
+           scount++;
+
+      	 end
+
+  	   end
+ 
+	     join
+
+    end 
+
+     //---------------- VLAN TRAFFIC+pfc ----------------   
     if(pfc_with_vlan_traffic) begin
 
     fork

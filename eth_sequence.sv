@@ -90,13 +90,11 @@ class gmii_eth_normal_frame_seq extends base_seq;
       end
         
     
-    //if(!pfc_sel && !pause_sel) begin   
       if(payload_rand_en == 1) 
         req.randomize() with {sa == p_sequencer.mac_addr;};   
       else
         req.randomize() with {sa == p_sequencer.mac_addr;       
                               ether_type == c_ether_type;};  
-   // end       
      //Fixing DA constant
     //if(trans_count % 2 != 0) begin
     //  if(trans_count == 1)
@@ -153,17 +151,14 @@ class gmii_eth_normal_frame_seq extends base_seq;
       
     //--------------------pause_frame--------
 
-	  if(pause_sel) begin
-		//req.randomize() with {sa == p_sequencer.mac_addr;};
-  		req.pause_frame_en = 1;
- 	    req.pause_opc      = 16'h0001;
-      //  req.da             = 48'h01_80_c2_00_00_01;
+      if(pause_sel) begin
+  	req.pause_frame_en = 1;
+        req.pause_opc      = 16'h0001;
         req.ether_type     = 16'h8808;
-        req.pause_time     = $urandom_range(1,4);
+        req.pause_time     = this.pause_time;
         
         if(this.pause_rsd_en) 
-		 	req.pause_opc      = 16'h0002;
-
+          req.pause_opc      = 16'h0002;
       end
 
  
