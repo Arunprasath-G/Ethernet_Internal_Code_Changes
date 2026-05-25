@@ -39,12 +39,8 @@ class base_seq extends uvm_sequence #(eth_seq_item);
   bit pause_sel;
   bit pfc_sel;  
   bit pause_rsd_en;
-  bit constant_rand_slot; 
-  bit max_coll_en;
-  int src_agent;
-  int dst_agent;
   static bit [47:0] temp_da1;
-  static bit [47:0] temp_da2;  
+  static bit [47:0] temp_da2; 
   
   function new (string name = "base_seq");
     super.new(name);
@@ -80,20 +76,8 @@ class gmii_eth_normal_frame_seq extends base_seq;
         req.carr_ext_en = carr_ext_en;
       end      
       
-      if(this.padding_en==1)begin
-       
-      	 req.padding_en = ((exact_pkt % 3)==1);
-         `uvm_info("SEQ_PKT_INFO",
-           $sformatf(
-             "TRANS=%0d | PADDING=%0b | MODE=FULL_DUPLEX | SA=%012h --> DA=%012h | LENGTH=%0d",
-             exact_pkt,
-             req.padding_en,
-             req.sa,
-             req.da,
-             req.ether_type
-           ),
-         UVM_LOW)
-      end
+    if(this.padding_en == 1)
+      req.padding_en = 1;
     
       //Runt Frame
       if(this.runt_en == 1) begin
@@ -106,70 +90,36 @@ class gmii_eth_normal_frame_seq extends base_seq;
       end
         
     
-    if(!pfc_sel && !pause_sel) begin   
       if(payload_rand_en == 1) 
         req.randomize() with {sa == p_sequencer.mac_addr;};   
       else
         req.randomize() with {sa == p_sequencer.mac_addr;       
                               ether_type == c_ether_type;};  
-    end       
-
-    //--------------------------------------------
-    // Print runt packet info
-    //--------------------------------------------
-    if(this.runt_en == 1 && c_ether_type < 46) begin
-     
-      src_agent = -1;
-      dst_agent = -1;
-     
-      for(int i = 0; i < `NO_OF_AGENTS; i++) begin
-     
-        if(req.sa == req.mac_addr[i])
-          src_agent = i;
-     
-        if(req.da == req.mac_addr[i])
-          dst_agent = i;
-     
-      end
-     
-      `uvm_info("SEQ_RUNT_PKT",
-        $sformatf(
-          "RUNT PKT : TX_AGENT[%0d] --> RX_AGENT[%0d] | TX_NO=%0d",
-          src_agent,
-          dst_agent,
-          exact_pkt),
-        UVM_LOW)
-     
-    end
-
-    if(custom_da)
-      req.da=da;   
      //Fixing DA constant
-    //if(custom_da == 1) begin
-    //  if(trans_count % 2 != 0) begin
-    //    if(trans_count == 1)
-    //      temp_da1 = req.da;
-    //    else
-    //      req.da = temp_da1;
-    //  end else begin
-    //    if(trans_count == 2)
-    //      temp_da2 = req.da;
-    //    else
-    //      req.da = temp_da2;
-    //  end       
-    //end       
+    //if(trans_count % 2 != 0) begin
+    //  if(trans_count == 1)
+    //    temp_da1 = req.da;
+    //  else
+    //    req.da = temp_da1;
+    //end else begin
+    //  if(trans_count == 2)
+    //    temp_da2 = req.da;
+    //  else
+    //    req.da = temp_da2;
+    //end      
+
       req.mode = mode;
-      req.constant_rand_slot = constant_rand_slot;
-      req.max_coll_en = max_coll_en;
       
+      if(custom_da)
+        req.da=da;   
       
 //       if(len_payload_mismat_en) begin
 //         req.ether_type = $urandom_range(46,1500);
 //       end  
       
-     /* if(this.pause_rsd_en) begin
+    /* if(this.pause_rsd_en) begin
         req.pause_frame_en = 1;
- 	      req.pause_opc      = 16'h0002;
+ 	    req.pause_opc      = 16'h0002;
         req.ether_type     = 16'h8808;
         req.pause_time     = 1; //$urandom_range(1,10)
       
@@ -190,7 +140,7 @@ class gmii_eth_normal_frame_seq extends base_seq;
         req.PCP = this.pcp;
         if(!pfc_sel) begin
           req.TPID=16'h8100;
-          req.PCP =3'b011;
+          req.PCP = $urandom_range(1,3); //3'b011;//$urandom_range(1,3);
         end  
         if(VID != 0)
           req.VID = VID;
@@ -201,34 +151,31 @@ class gmii_eth_normal_frame_seq extends base_seq;
       
     //--------------------pause_frame--------
 
-	  if(pause_sel) begin
-		req.randomize() with {sa == p_sequencer.mac_addr;};
-  		req.pause_frame_en = 1;
- 	    req.pause_opc      = 16'h0001;
-      //  req.da             = 48'h01_80_c2_00_00_01;
+      if(pause_sel) begin
+  	req.pause_frame_en = 1;
+        req.pause_opc      = 16'h0001;
         req.ether_type     = 16'h8808;
-        req.pause_time     = $urandom_range(1,4);
+        req.pause_time     = this.pause_time;
         
         if(this.pause_rsd_en) 
-		   	  req.pause_opc      = 16'h0002;
-
+          req.pause_opc      = 16'h0002;
       end
 
  
      //--------------------------pfc_frame--------------
      if(pfc_sel) begin
-        req.randomize() with {sa == p_sequencer.mac_addr;};
+       // req.randomize() with {sa == p_sequencer.mac_addr;};
       
         req.pfc_frame_en=1;
         req.pause_opc =16'h0101;
        // req.da = 48'h01_80_c2_00_00_01;
         req.vlan_en      = 0;
         req.ether_type =16'h8808;
-        req.priority_en_vector=16'h8;// priority[3] 
-        for(int i=0;i<8;i++) 
-        	req.pfc_pause_time[i]=16'h0;
+       req.priority_en_vector[3] = 1;// priority[3] 
+//         for(int i=0;i<8;i++) 
+//         	req.pfc_pause_time[i]=16'h0;
       
-       req.pfc_pause_time[3]=16'h0002; //priority[3] time =10;
+       req.pfc_pause_time[3]=16'h0002; //priority[3];
           
       end  
   
@@ -250,7 +197,7 @@ class gmii_eth_normal_frame_seq extends base_seq;
       
    
       //CORRUPT FCS
-    if(this.corrupt_fcs_en == 1 && error_pkt_no == exact_pkt) begin
+    if(this.corrupt_fcs_en == 1 && (error_pkt_no == exact_pkt || send_runt == 1 || req.ether_type > 1518)) begin
           req.corrupt_fcs_en = 1;
           `uvm_info("CORRUPT FCS TX",$sformatf("Sending bad fcs in Transaction = %0d",exact_pkt),UVM_LOW)
       end else

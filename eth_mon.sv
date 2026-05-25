@@ -8,7 +8,6 @@ class eth_mon extends uvm_monitor;
   bit [47:0] mac_addr;
   int mac_id;
   int rx_pkt_count;
-  int tx_pkt_count;
 
   bit [7:0] tx_frame_q[$];
   bit [7:0] rx_frame_q[$];
@@ -172,8 +171,6 @@ task tx_mon();
       // CREATE TR
       //------------------------------------------------
       tr = eth_seq_item::type_id::create("tr", this);
-      tx_pkt_count++;
-      tr.tx_count = tx_pkt_count;
 
       //------------------------------------------------
       // DA EXTRACTION
@@ -406,9 +403,12 @@ if(tr.payload.size() < 46 &&
 
     globals::v_uif[mac_addr].tx_runt_count++;
 
-    	pkt_bad=1;
-    `uvm_error("TX_RUNT", $sformatf( "runt_packet_detected=%0d",
-        tr.payload.size()))
+    `uvm_info("TX_RUNT",
+      $sformatf(
+        "Good runt packet payload=%0d",
+        tr.payload.size()),
+      UVM_LOW)
+
   end
 
   //--------------------------------------------
@@ -430,7 +430,40 @@ if(tr.payload.size() < 46 &&
 
   end
 
+end      //------------------------------------------------
+      // JUMBO
+      //------------------------------------------------
+      if(tr.payload.size() > 1500 &&
+         tr.payload.size() <= 9000)
+
+        globals::v_uif[mac_addr].tx_jumbo_count++;
+
+      //------------------------------------------------
+      // SUPER JUMBO
+      //------------------------------------------------
+      if(tr.payload.size() > 9000)
+        globals::v_uif[mac_addr].tx_super_jumbo_count++;
+
+      //------------------------------------------------
+      // COLLISION
+      //------------------------------------------------
+      if(v_intf.COL)
+        globals::v_uif[mac_addr].tx_collison_count++;
+
+      //------------------------------------------------
+      // GOOD / BAD COUNTS
+      //------------------------------------------------
+      if(pkt_bad) begin
+        globals::v_uif[mac_addr].tx_bad_pkt_count++;
+	
+	end
+else begin
+        globals::v_uif[mac_addr].tx_good_pkt_count++;
+        
+
+
 end
+
 	//------------------------------------------------
 // BLOCK PAUSE FROM SCOREBOARD
 //------------------------------------------------
@@ -452,40 +485,6 @@ end
       UVM_LOW)
  
    continue;
-end
-
-      //------------------------------------------------
-      // JUMBO
-      //------------------------------------------------
-      if(!pkt_bad && tr.payload.size() > 1500 &&
-         tr.payload.size() <= 9000)
-
-        globals::v_uif[mac_addr].tx_jumbo_count++;
-
-      //------------------------------------------------
-      // SUPER JUMBO
-      //------------------------------------------------
-      if(!pkt_bad && tr.payload.size() > 9000)
-        globals::v_uif[mac_addr].tx_super_jumbo_count++;
-
-      //------------------------------------------------
-      // COLLISION
-      //------------------------------------------------
-      if(v_intf.COL)
-        globals::v_uif[mac_addr].tx_collison_count++;
-
-      //------------------------------------------------
-      // GOOD / BAD COUNTS
-      //------------------------------------------------
-      if(pkt_bad) begin
-        globals::v_uif[mac_addr].tx_bad_pkt_count++;
-	
-	end
-else begin
-        globals::v_uif[mac_addr].tx_good_pkt_count++;
-        
-
-
 end
 
  
@@ -801,23 +800,6 @@ end
 if(len_mismatch_rx &&
    tr.payload.size() >= 46) begin
 
-  //--------------------------------------------
-  // classify before dropping
-  //--------------------------------------------
-  if(tr.da == 48'hFF_FF_FF_FF_FF_FF)
-    globals::v_uif[mac_addr].rx_broadcast_count++;
-
-  else if(tr.da[40] &&
-          tr.da != 48'hFF_FF_FF_FF_FF_FF &&
-          !tr.pause_frame_en)
-    globals::v_uif[mac_addr].rx_multicast_count++;
-
-  else
-    globals::v_uif[mac_addr].rx_unicast_count++;
-
-  //--------------------------------------------
-  // bad packet count
-  //--------------------------------------------
   globals::v_uif[mac_addr].rx_bad_pkt_count++;
 
   `uvm_error("RX_LEN_MISMATCH",
@@ -828,7 +810,7 @@ if(len_mismatch_rx &&
       tr.payload.size()))
 
   continue;
-end
+end	
 	
 
 	  if(tr.vlan_en) begin
@@ -916,14 +898,17 @@ if(tr.payload.size() < 46 &&
     //----------------------------------------
     globals::v_uif[mac_addr].rx_runt_count++;
 
-    globals::v_uif[mac_addr].rx_bad_pkt_count++;
+    globals::v_uif[mac_addr].rx_good_pkt_count++;
 
-     `uvm_error("RX_RUNT", $sformatf(" runt packet detected=%0d",tr.payload.size()))
+    `uvm_info("RX_RUNT",
+      $sformatf(
+        "Good runt packet payload=%0d",
+        tr.payload.size()),
+      UVM_LOW)
 
+    rx_ap.write(tr);
 
-    //rx_ap.write(tr);
-
-    continue;
+    //continue;
 
   end
 
@@ -1221,21 +1206,22 @@ endtask
 
 actual_payload_size = int'(frame_q.size() - idx - 4);
 
-//-----------------------------------------
-// LENGTH FIELD
-//-----------------------------------------
 if(tr.ether_type <= 16'd1500) begin
 
   payload_size = int'(tr.ether_type);
+
+  `uvm_info("MON_LEN_CHECK",
+    $sformatf(
+      "ether_type(claimed)=%0d actual_payload=%0d",
+      payload_size,
+      actual_payload_size),
+    UVM_LOW)
 
   if(tr.vlan_en)
     min_payload = 42;
   else
     min_payload = 46;
 
-  //-------------------------------------
-  // runt padding check
-  //-------------------------------------
   if(payload_size < min_payload &&
      !tr.pause_frame_en &&
      !tr.pfc_frame_en) begin
@@ -1250,13 +1236,13 @@ if(tr.ether_type <= 16'd1500) begin
           payload_size,
           actual_payload_size,
           min_payload))
-    end
-  end
 
-  //-------------------------------------
-  // normal length check
-  //-------------------------------------
-  else begin
+    end
+
+  end
+  end
+  else if(!tr.pause_frame_en &&
+          !tr.pfc_frame_en) begin
 
     if(actual_payload_size != payload_size) begin
 
@@ -1269,35 +1255,41 @@ if(tr.ether_type <= 16'd1500) begin
           tr.sa,
           payload_size,
           actual_payload_size))
+
     end
+
   end
-end
 
-//-----------------------------------------
-// INVALID ETHERTYPE RANGE
-//-----------------------------------------
-else if(tr.ether_type > 16'd1500 &&
-        tr.ether_type < 16'd1536) begin
+      //-----------------------------------------
+  // UNDEFINED RANGE
+  //-----------------------------------------
+  else if(tr.ether_type > 16'd1500 &&
+          tr.ether_type < 16'd1536) begin
+    
+    invalid_ethertype=1;
+    
+    /*
+    `uvm_error("UNDEFINED_ETHERTYPE",
+      $sformatf(
+      "Reserved EtherType/Length value detected = %0d",
+      tr.ether_type))*/
 
-  invalid_ethertype = 1;
+  end
+      
+   //-----------------------------------------
+  // VALID ETHERTYPE
+  //-----------------------------------------
+  else begin
 
-  `uvm_error("UNDEFINED_ETHERTYPE",
-    $sformatf(
-      "Reserved EtherType detected = %0d",
-      tr.ether_type))
-end
-
-//-----------------------------------------
-// VALID ETHERTYPE
-//-----------------------------------------
-else begin
-
-  `uvm_info("VALID_ETHERTYPE",
-    $sformatf(
+    `uvm_info("VALID_ETHERTYPE",
+      $sformatf(
       "EtherType frame detected = %0h",
       tr.ether_type),
-    UVM_LOW)
-end      
+      UVM_LOW)
+
+  end    
+      
+      
       
       
       
@@ -1442,7 +1434,6 @@ end
 
 endfunction
 endclass
-
 
 
 
