@@ -2,16 +2,26 @@ vlib work
 
 vmap work work
 
-vlog -work work  -sv  eth_ui_interface.sv eth_gmii_interface.sv eth_pkg.sv eth_top.sv
+# Compile interfaces first
+vlog -work work -sv eth_gmii_interface.sv
+vlog -work work -sv eth_ui_interface.sv
+
+# Compile package
+vlog -work work -sv eth_pkg.sv
+
+# Compile top
+vlog -work work -sv eth_top.sv
 
 set infile [open "logfile.sv" w+]
 
-#vsim  -cvgperinstance -coverage  -c eth_top +UVM_TESTNAME=eth_test +UVM_VERBOSITY=UVM_LOW -l $infile
-vsim   eth_top +UVM_TESTNAME=gmii_eth_normal_frame_test  +UVM_VERBOSITY=UVM_LOW -l $infile
+# Run simulation
+vsim -debugDB work.eth_top +UVM_TESTNAME=gmii_eth_runt_bad_fcs_test  +UVM_VERBOSITY=UVM_LOW -l $infile
 
 add log -r /eth_top/*
 
 add wave -r /eth_top/*
+#add wave -r /eth_top/ui_inf[1]/*
+
 
 run -all
  
