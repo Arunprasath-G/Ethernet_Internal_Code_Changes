@@ -41,6 +41,8 @@ class base_seq extends uvm_sequence #(eth_seq_item);
   bit pause_rsd_en;
   bit constant_rand_slot; 
   bit max_coll_en;
+  int src_agent;
+  int dst_agent;
   static bit [47:0] temp_da1;
   static bit [47:0] temp_da2;  
   
@@ -78,8 +80,20 @@ class gmii_eth_normal_frame_seq extends base_seq;
         req.carr_ext_en = carr_ext_en;
       end      
       
-    if(this.padding_en == 1)
-      req.padding_en = 1;
+      if(this.padding_en==1)begin
+       
+      	 req.padding_en = ((exact_pkt % 3)==1);
+         `uvm_info("SEQ_PKT_INFO",
+           $sformatf(
+             "TRANS=%0d | PADDING=%0b | MODE=FULL_DUPLEX | SA=%012h --> DA=%012h | LENGTH=%0d",
+             exact_pkt,
+             req.padding_en,
+             req.sa,
+             req.da,
+             req.ether_type
+           ),
+         UVM_LOW)
+      end
     
       //Runt Frame
       if(this.runt_en == 1) begin
@@ -99,6 +113,34 @@ class gmii_eth_normal_frame_seq extends base_seq;
         req.randomize() with {sa == p_sequencer.mac_addr;       
                               ether_type == c_ether_type;};  
     end       
+
+    //--------------------------------------------
+    // Print runt packet info
+    //--------------------------------------------
+    if(this.runt_en == 1 && c_ether_type < 46) begin
+     
+      src_agent = -1;
+      dst_agent = -1;
+     
+      for(int i = 0; i < `NO_OF_AGENTS; i++) begin
+     
+        if(req.sa == req.mac_addr[i])
+          src_agent = i;
+     
+        if(req.da == req.mac_addr[i])
+          dst_agent = i;
+     
+      end
+     
+      `uvm_info("SEQ_RUNT_PKT",
+        $sformatf(
+          "RUNT PKT : TX_AGENT[%0d] --> RX_AGENT[%0d] | TX_NO=%0d",
+          src_agent,
+          dst_agent,
+          exact_pkt),
+        UVM_LOW)
+     
+    end
 
     if(custom_da)
       req.da=da;   

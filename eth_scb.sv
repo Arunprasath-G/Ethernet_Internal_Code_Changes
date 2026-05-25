@@ -9,8 +9,6 @@ class eth_scb extends uvm_scoreboard;
  
   eth_seq_item tx_tr;
   eth_seq_item rx_tr;
-// eth_seq_item tx_aa[int][int];//agent name , transaction number
-//  eth_seq_item rx_aa[int][int];
   // TX ARRAY
 // [source_agent][destination_agent][transaction_number]
 eth_seq_item tx_aa[int][int][int];
@@ -42,6 +40,7 @@ function void write_ap_1(eth_seq_item tx_tr);
  
   int src_id;
   int dst_id;
+  int txn_no;
  
   src_id = source_address(tx_tr);
   dst_id = destination_address(tx_tr);
@@ -52,23 +51,24 @@ function void write_ap_1(eth_seq_item tx_tr);
   //-----------------------------------------
   if(dst_id == -1) begin
  
-    dst_id = `NO_OF_AGENTS;
+  `uvm_info("SCB_INVALID_DA_STORE",
+    $sformatf(
+      "Invalid DA packet stored : TX_AGENT[%0d] --> INVALID_DA[%0d] | DA=%012h",
+      src_id,
+      dst_id,
+      tx_tr.da),
+    UVM_LOW)
  
-    `uvm_info("SCB_INVALID_DA_STORE",
-      $sformatf(
-        "Invalid DA packet stored : DA=%012h",
-        tx_tr.da),
-      UVM_LOW)
- 
-  end
- 
+end
   //-----------------------------------------
   // Store TX transaction
   //-----------------------------------------
-  tx_count[src_id][dst_id]++;
-  $display("-------------------2222222222222222 %0d",tx_count[src_id][dst_id]);
+//  tx_count[src_id][dst_id]++;
  
-  tx_aa[src_id][dst_id][tx_count[src_id][dst_id]] = tx_tr;
+  //tx_aa[src_id][dst_id][tx_count[src_id][dst_id]] = tx_tr;
+  txn_no = tx_tr.tx_count;
+  tx_aa[src_id][dst_id][txn_no] = tx_tr;
+ 
  
 `uvm_info("SCB_TX",
   $sformatf(
@@ -101,18 +101,38 @@ function void write_ap_2(eth_seq_item rx_tr);
   src_id = source_address(rx_tr);       // from SA
   dst_id = destination_address(rx_tr);  // from DA
  
-  if(src_id == -1 || dst_id == -1)
-    return;
+  if(src_id == -1) begin
  
+  `uvm_error("SCB_INVALID_SA_RX",
+    $sformatf("Invalid SA received at RX : SA=%012h",
+              rx_tr.sa))
+  return;
+ 
+end
+ 
+//-----------------------------------------
+// Invalid DA packet reached RX
+//-----------------------------------------
+if(dst_id == -1) begin
+ 
+  `uvm_error("SCB_INVALID_DA_RX",
+    $sformatf(
+      "FAIL : Invalid DA packet reached RX : DA=%012h",
+      rx_tr.da))
+ 
+  return;
+ 
+end
   // Use rx_count as transaction number
   txn_no = rx_tr.rx_count;
  
-  if((!tx_aa.exists(src_id) || !tx_aa[src_id].exists(dst_id) || !tx_aa[src_id][dst_id].exists(txn_no))) begin
+  if(!tx_aa.exists(src_id) ||
+     !tx_aa[src_id].exists(dst_id) ||
+     !tx_aa[src_id][dst_id].exists(txn_no)) begin
  
     `uvm_error("SCB_EXTRA_RX",
       $sformatf("RX received but matching TX not found: RX[%0d][%0d][%0d]",
                 src_id, dst_id, txn_no))
-		//rx_tr.print();
     return;
   end
  
@@ -606,22 +626,7 @@ if (pass) begin
 endfunction
  
   
-  //converts mac address into agent number
-//    function int source_address(eth_seq_item tx_tr);
- 
-//   bit [7:0] last_byte;
- 
-//      last_byte = tx_tr.sa[7:0];
-//  if (last_byte >= 8'h10 && last_byte < (8'h10 + `NO_OF_AGENTS))
-
-//   return last_byte - 8'h10;
-//   else begin
-//     `uvm_error("SB_Source_address", $sformatf("Invalid SA = %0p, last_byte = %0h",
-//                                tx_tr.sa, last_byte))
-//     return -1;
-//   end
-//   endfunction
-    function int source_address(eth_seq_item tx_tr);
+function int source_address(eth_seq_item tx_tr);
  
   for(int i = 0; i < `NO_OF_AGENTS; i++) begin
  
@@ -638,26 +643,9 @@ endfunction
   return -1;
  
 endfunction
-      //calculating destination address
-//   function int destination_address(eth_seq_item tx_tr);
  
-//   bit [7:0] last_byte;
  
-//     last_byte = tx_tr.da[7:0];
- 
-//   if (last_byte >= 8'h10 && last_byte < (8'h10 + `NO_OF_AGENTS))
-
-//     return (last_byte - 8'h10);
-//   else begin
-//     `uvm_info("SB_destination_address",
-//   $sformatf("Invalid DA: RX_MON expected to be dropped: DA=%h last_byte=%0h",
-//             tx_tr.da, last_byte),
-//   UVM_LOW)
-//     return -1;
-//   end
- 
-// endfunction
-   function int destination_address(eth_seq_item tx_tr);
+  function int destination_address(eth_seq_item tx_tr);
  
   for(int i = 0; i < `NO_OF_AGENTS; i++) begin
  
@@ -678,10 +666,5 @@ endfunction
 
  
   
-  /*
- 
-   function void compare(int i,eth_seq_item tx_tr,eth_seq_item rx_tr);
-     `uvm_info("SCORBOARD",$sformatf("Base write() agent = %0d, txd = %p, rxd = %p",i,tx_tr.sa, rx_tr.sa), UVM_LOW)
-  endfunction 
-  */
 endclass
+ 

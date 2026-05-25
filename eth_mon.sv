@@ -8,6 +8,7 @@ class eth_mon extends uvm_monitor;
   bit [47:0] mac_addr;
   int mac_id;
   int rx_pkt_count;
+  int tx_pkt_count;
 
   bit [7:0] tx_frame_q[$];
   bit [7:0] rx_frame_q[$];
@@ -171,6 +172,8 @@ task tx_mon();
       // CREATE TR
       //------------------------------------------------
       tr = eth_seq_item::type_id::create("tr", this);
+      tx_pkt_count++;
+      tr.tx_count = tx_pkt_count;
 
       //------------------------------------------------
       // DA EXTRACTION
@@ -1439,6 +1442,7 @@ end
 
 endfunction
 endclass
+
 
 
 

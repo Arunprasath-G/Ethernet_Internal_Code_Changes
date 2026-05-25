@@ -41,6 +41,7 @@ class eth_seq_item extends uvm_sequence_item;
   bit [15:0] pfc_pause_time[8];  
   bit constant_rand_slot; 
   bit max_coll_en;
+  int tx_count;
   
   `uvm_object_utils_begin(eth_seq_item)
   `uvm_field_int(da, UVM_ALL_ON)   // <-- DA
