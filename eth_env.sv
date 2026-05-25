@@ -48,8 +48,8 @@ class eth_env extends uvm_env;
     end
     
   	foreach(agnt_mac[i]) begin
-          agnt_mac[i].drv_h.mac_id = i;
-          agnt_mac[i].mon_h.mac_id = i;
+  		agnt_mac[i].drv_h.mac_id = i;
+  		agnt_mac[i].mon_h.mac_id = i;
 	end
 
   endfunction  

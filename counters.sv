@@ -15,7 +15,6 @@ typedef struct{
   bit [31:0] tx_vlan_count;
   bit [31:0] tx_ipg_violation_count; 
   bit [31:0] tx_pfc_count;
-  bit [31:0] tx_carrier_ext_count;
   
   //Rx Counters
   bit [31:0] rx_good_pkt_count;
@@ -33,6 +32,5 @@ typedef struct{
   bit [31:0] rx_drop_count;
   bit [31:0] rx_pfc_count;
   bit [31:0] rx_ipg_violation_count; 
-  bit [31:0] rx_carrier_ext_count;
   
 } counters;
