@@ -1289,12 +1289,6 @@ if(tr.ether_type <= 16'd1500) begin
 
   end    
       
-      
-      
-      
-      
-      
-
   tr.payload = new[actual_payload_size];
   for(int i = actual_payload_size-1; i >= 0; i--)
   tr.payload[i] = frame_q[idx++];

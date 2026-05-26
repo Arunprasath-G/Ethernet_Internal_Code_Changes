@@ -5,6 +5,8 @@ class eth_test extends uvm_test;
   virtual_seq v_seq;
   int no_of_pkts;
   bit config_pkts_cnt = 1;
+  bit send_coll_pkt;
+  int count;
 
   
   function new(string name = "eth_test", uvm_component parent = null);
@@ -388,7 +390,7 @@ class gmii_eth_invalid_dest_addr_test extends eth_test;
       vseq.custom_da = 1;
       
       for (int i = 0; i < 6; i++)
-      	vseq.da[8*i +: 8] = 8'h88;
+         vseq.da[8*i +: 8] = 8'h88;
       vseq.padding_en =1;
       vseq.start(env_h.vseqr_h);    
     end
@@ -451,6 +453,11 @@ class gmii_eth_collision_detect_test extends eth_test;
       vseq.payload_rand_en = 1;
       vseq.coll_en = 1;  
       vseq.padding_en =1;
+      if (!std::randomize(send_coll_pkt) with { send_coll_pkt dist {0 := 70, 1 := 30}; })
+        `uvm_error("RAND_FAIL", "send_coll_pkt randomization failed")
+      if(send_coll_pkt) begin
+        vseq.coll_en = 1;  
+      end
       vseq.start(env_h.vseqr_h);    
     end
     #100;
@@ -597,17 +604,17 @@ class gmii_eth_vlan_same_vid_different_pcp_test extends eth_test;
     
     phase.raise_objection(this); 
     for(int i=0; i<this.no_of_pkts;i++)  begin
-    	vseq = virtual_seq::type_id::create("vseq");
-    	vseq.mode = 1;
-    	vseq.vlan_en = 1;
-      	vseq.ether_type=200;
-    	vseq.payload_rand_en = 0;
-    	vseq.TPID = 16'h8100;
+       vseq = virtual_seq::type_id::create("vseq");
+       vseq.mode = 1;
+       vseq.vlan_en = 1;
+         vseq.ether_type=200;
+       vseq.payload_rand_en = 0;
+       vseq.TPID = 16'h8100;
         vseq.VID = 12'h64;
       
-      	vseq.pcp = i%8;
-    	
-    	vseq.start(env_h.vseqr_h);
+         vseq.pcp = i%8;
+       
+       vseq.start(env_h.vseqr_h);
     end  
     #100;
     phase.drop_objection(this);
@@ -668,9 +675,13 @@ class gmii_eth_collision_in_middle_bytes_test extends eth_test;
       vseq = virtual_seq::type_id::create("vseq");    
       vseq.mode = 0;
       vseq.payload_rand_en = 1;
-      vseq.coll_en = 1;  
-      vseq.middle_coll_en = 1;
       vseq.padding_en =1;
+      if (!std::randomize(send_coll_pkt) with { send_coll_pkt dist {0 := 70, 1 := 30}; })
+        `uvm_error("RAND_FAIL", "send_coll_pkt randomization failed")
+      if(send_coll_pkt) begin
+        vseq.coll_en = 1;  
+        vseq.middle_coll_en = 1;
+      end
       vseq.start(env_h.vseqr_h);    
     end
     #100;
@@ -846,10 +857,15 @@ class gmii_eth_max_collision_attempt_test extends eth_test;
       vseq = virtual_seq::type_id::create("vseq");    
       vseq.mode = 0;
       vseq.payload_rand_en = 1;
-      vseq.coll_en = 1;  
-      vseq.max_coll_en = 1;
-      vseq.constant_rand_slot = 3; //Same randomized slot time to acheive the maximum collision
       vseq.padding_en =1;
+      if (!std::randomize(send_coll_pkt) with { send_coll_pkt dist {0 := 70, 1 := 30}; })
+        `uvm_error("RAND_FAIL", "send_coll_pkt randomization failed")
+      if(send_coll_pkt) begin
+	`uvm_info("Max Collision", "Setting Excessive Collision Occurence",UVM_LOW);
+        vseq.coll_en = 1;  
+        vseq.max_coll_en = 1;
+        vseq.constant_rand_slot = 3; //Same randomized slot time to acheive the maximum collision
+      end
       vseq.start(env_h.vseqr_h);    
     end
     #100;
@@ -858,3 +874,37 @@ class gmii_eth_max_collision_attempt_test extends eth_test;
   
 endclass
 
+class gmii_eth_late_collision_test extends eth_test;
+  `uvm_component_utils(gmii_eth_late_collision_test)
+  
+  function new (string name = "gmii_eth_late_collision_test", uvm_component parent = null);
+    super.new(name,parent);
+  endfunction
+
+  function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+  endfunction    
+  
+  task run_phase(uvm_phase phase);
+    virtual_seq vseq;
+    
+    phase.raise_objection(this);  
+    repeat(this.no_of_pkts) begin
+      count++;
+      vseq = virtual_seq::type_id::create("vseq");    
+      vseq.mode = 0;
+      vseq.payload_rand_en = 1;
+      vseq.padding_en =1;
+      if (!std::randomize(send_coll_pkt) with { send_coll_pkt dist {0 := 70, 1 := 30}; })
+        `uvm_error("RAND_FAIL", "send_coll_pkt randomization failed")
+      if(count > 1 && send_coll_pkt) begin
+        vseq.coll_en = 1;  
+        vseq.middle_coll_en = 1;
+      end
+      vseq.start(env_h.vseqr_h);    
+    end
+    #100;
+    phase.drop_objection(this);
+  endtask    
+  
+endclass
