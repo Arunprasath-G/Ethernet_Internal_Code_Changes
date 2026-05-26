@@ -39,6 +39,10 @@ class base_seq extends uvm_sequence #(eth_seq_item);
   bit pause_sel;
   bit pfc_sel;  
   bit pause_rsd_en;
+  bit constant_rand_slot; 
+  bit max_coll_en;
+  int src_agent;
+  int dst_agent;  
   static bit [47:0] temp_da1;
   static bit [47:0] temp_da2; 
   
@@ -109,6 +113,8 @@ class gmii_eth_normal_frame_seq extends base_seq;
     //end      
 
       req.mode = mode;
+      req.constant_rand_slot = constant_rand_slot;
+      req.max_coll_en = max_coll_en;
       
       if(custom_da)
         req.da=da;   

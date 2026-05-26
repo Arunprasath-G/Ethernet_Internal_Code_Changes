@@ -140,10 +140,6 @@ class eth_drv extends uvm_driver#(eth_seq_item);
     v_intf.RX_ER  <= 0;
     v_intf.COL    <= 0;
     v_intf.CRS    <= 0;
-    retry_count    = 0;
-    backoff_k      = 0; 
-    rand_slot      = 0;  
-    backoff_time   = 0;    
   endtask
     
   task carrier_ext();
@@ -185,7 +181,9 @@ class eth_drv extends uvm_driver#(eth_seq_item);
         frame_q.delete();
         collision_detect = 1;
         break;
-      end      
+      end else
+	 collision_detect = 0;        
+
       v_intf.TX_EN <= 1;      
       v_intf.TXD   <= frame_q.pop_front();
       v_intf.TX_ER <= 0;
@@ -197,9 +195,14 @@ class eth_drv extends uvm_driver#(eth_seq_item);
       
     if(collision_detect == 1) begin
       send_jam_signal();
-      do_back_off_alg();
-    end else
+      do_back_off_alg(tr);
+    end else begin
       retry_q.delete();
+      retry_count    = 0;
+      backoff_k      = 0; 
+      rand_slot      = 0;  
+      backoff_time   = 0;    
+    end
 
     //Adding Carrier Extension if it is less than 512 bytes
     carrier_ext();
@@ -224,7 +227,7 @@ class eth_drv extends uvm_driver#(eth_seq_item);
     drive_reset();
   endtask
     
-  task do_back_off_alg();
+  task do_back_off_alg(eth_seq_item tr);
     // Ethernet limits
     int SLOT_TIME       = 512; // bit times
     int MAX_BACKOFF_EXP = 10;
@@ -234,6 +237,10 @@ class eth_drv extends uvm_driver#(eth_seq_item);
     retry_count++;     
     // Retry limit check
     if (retry_count >= MAX_RETRY) begin
+      retry_count    = 0;
+      backoff_k      = 0; 
+      rand_slot      = 0;  
+      backoff_time   = 0;   	    
       $display("Retry limit exceeded. Abort transmission.");
       return;
     end
@@ -245,7 +252,10 @@ class eth_drv extends uvm_driver#(eth_seq_item);
 
     // Random slot selection
     // Range: 0 to (2^k - 1)
-    rand_slot = $urandom_range((2**backoff_k)-1, 0);
+    if(tr.max_coll_en == 1)
+      rand_slot = tr.constant_rand_slot;
+    else
+      rand_slot = $urandom_range((2**backoff_k)-1, 0);
 
     // Backoff delay
     backoff_time = rand_slot * SLOT_TIME;
@@ -263,13 +273,7 @@ class eth_drv extends uvm_driver#(eth_seq_item);
     // Wait for backoff time
     #(backoff_time);
     frame_q = retry_q;
-    if(v_intf.CRS == 0) begin
-      collision_detect = 0;
-      drive_tx_frame(tr);
-    end
-    
-    if(v_intf.COL == 1)
-      do_back_off_alg();
+    drive_tx_frame(tr);
    
   endtask
     

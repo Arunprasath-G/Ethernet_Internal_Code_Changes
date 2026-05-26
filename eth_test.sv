@@ -3,11 +3,17 @@ class eth_test extends uvm_test;
   
   eth_env env_h;
   virtual_seq v_seq;
-  int no_of_pkts = 100;
+  int no_of_pkts;
+  bit config_pkts_cnt = 1;
 
   
   function new(string name = "eth_test", uvm_component parent = null);
     super.new(name,parent);
+
+    if(config_pkts_cnt == 1)
+      no_of_pkts = 100;
+    else 
+      no_of_pkts = 1000;
     
   endfunction
   
@@ -819,3 +825,36 @@ class gmii_eth_pause_reserved_opcode_test extends eth_test;
     phase.drop_objection(this);
   endtask    
 endclass
+
+
+class gmii_eth_max_collision_attempt_test extends eth_test;
+  `uvm_component_utils(gmii_eth_max_collision_attempt_test)
+  
+  function new (string name = "gmii_eth_max_collision_attempt_test", uvm_component parent = null);
+    super.new(name,parent);
+  endfunction
+
+  function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+  endfunction    
+  
+  task run_phase(uvm_phase phase);
+    virtual_seq vseq;
+    
+    phase.raise_objection(this);  
+    repeat(this.no_of_pkts) begin
+      vseq = virtual_seq::type_id::create("vseq");    
+      vseq.mode = 0;
+      vseq.payload_rand_en = 1;
+      vseq.coll_en = 1;  
+      vseq.max_coll_en = 1;
+      vseq.constant_rand_slot = 3; //Same randomized slot time to acheive the maximum collision
+      vseq.padding_en =1;
+      vseq.start(env_h.vseqr_h);    
+    end
+    #100;
+    phase.drop_objection(this);
+  endtask    
+  
+endclass
+

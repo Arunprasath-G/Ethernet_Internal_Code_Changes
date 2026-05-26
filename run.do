@@ -15,7 +15,7 @@ vlog -work work -sv eth_top.sv
 set infile [open "logfile.sv" w+]
 
 # Run simulation
-vsim -debugDB work.eth_top +UVM_TESTNAME=gmii_eth_normal_frame_test  +UVM_VERBOSITY=UVM_LOW -l $infile
+vsim -debugDB work.eth_top +UVM_TESTNAME=gmii_eth_runt_bad_fcs_test  +UVM_VERBOSITY=UVM_LOW -l $infile
 
 add log -r /eth_top/*
 

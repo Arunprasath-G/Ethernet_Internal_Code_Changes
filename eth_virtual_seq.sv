@@ -42,7 +42,8 @@ class base_virtual_seq extends uvm_sequence;
   bit pause_rsd_en;
   bit pause_update_time_en;
   bit middle_coll_en;  
-  
+  bit constant_rand_slot; 
+  bit max_coll_en;  
    
   
   function new (string name = "base_virtual_seq");
@@ -80,10 +81,18 @@ class virtual_seq extends base_virtual_seq;
     end
 
     else begin
-      fork
-        seq1.start(p_sequencer.mac[0]);
-        seq2.start(p_sequencer.mac[1]);
-      join
+      if(this.middle_coll_en == 1) begin
+        $display("9999999999999999999999999999999999");
+        fork
+          seq1.start(p_sequencer.mac[0]);
+          #160 seq2.start(p_sequencer.mac[1]);
+        join        
+      end else begin    
+        fork
+          seq1.start(p_sequencer.mac[0]);
+          seq2.start(p_sequencer.mac[1]);
+        join
+      end
     end
 
   end
@@ -252,6 +261,8 @@ endtask
     seq.error_pkt_no        = this.error_pkt_no;
     seq.padding_en          = this.padding_en;
     seq.pause_rsd_en       = this.pause_rsd_en ; 
+    seq.constant_rand_slot  = this.constant_rand_slot ;     
+    seq.max_coll_en        = this.max_coll_en ;        
   endtask   
     
 endclass
