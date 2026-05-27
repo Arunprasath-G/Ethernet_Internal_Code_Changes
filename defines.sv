@@ -1,6 +1,7 @@
 `define NO_OF_AGENTS 2
 `define FREQ_IN_MHZ 125
 `define NO_OF_TX_AGNTS 1  //Valid values 1/2
+`define INTF_BIT_WIDTH 8
 
 
 `define UNICAST 0

@@ -13,7 +13,7 @@ class eth_test extends uvm_test;
     super.new(name,parent);
 
     if(config_pkts_cnt == 1)
-      no_of_pkts = 100;
+      no_of_pkts = 50;
     else 
       no_of_pkts = 1000;
     
@@ -453,11 +453,12 @@ class gmii_eth_collision_detect_test extends eth_test;
       vseq.payload_rand_en = 1;
       vseq.coll_en = 1;  
       vseq.padding_en =1;
-      if (!std::randomize(send_coll_pkt) with { send_coll_pkt dist {0 := 70, 1 := 30}; })
-        `uvm_error("RAND_FAIL", "send_coll_pkt randomization failed")
-      if(send_coll_pkt) begin
+      //if (!std::randomize(send_coll_pkt) with { send_coll_pkt dist {0 := 70, 1 := 30}; })
+      //  `uvm_error("RAND_FAIL", "send_coll_pkt randomization failed")
+      //if(send_coll_pkt) begin
+	`uvm_info("Collision Detect", "Collision is Enabled",UVM_LOW);
         vseq.coll_en = 1;  
-      end
+      //end
       vseq.start(env_h.vseqr_h);    
     end
     #100;

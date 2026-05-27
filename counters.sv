@@ -2,7 +2,7 @@ typedef struct{
   // Tx Counters
   bit [31:0] tx_good_pkt_count;
   bit [31:0] tx_bad_pkt_count;
-  bit [31:0] tx_collison_count;
+  bit [31:0] tx_collision_count;
   bit [31:0] tx_unicast_count;
   bit [31:0] tx_multicast_count;
   bit [31:0] tx_broadcast_count;
@@ -16,10 +16,14 @@ typedef struct{
   bit [31:0] tx_ipg_violation_count; 
   bit [31:0] tx_pfc_count;
   bit [31:0] tx_carrier_ext_count;
+  bit [31:0] tx_pause_xon_count; 
+  bit [31:0] tx_pause_xoff_count;
+  bit [31:0] tx_control_pkt_count;
   
   //Rx Counters
   bit [31:0] rx_good_pkt_count;
   bit [31:0] rx_bad_pkt_count;
+  bit [31:0] rx_collision_count;
   bit [31:0] rx_unicast_count;
   bit [31:0] rx_multicast_count;
   bit [31:0] rx_broadcast_count;
@@ -34,5 +38,8 @@ typedef struct{
   bit [31:0] rx_pfc_count;
   bit [31:0] rx_ipg_violation_count; 
   bit [31:0] rx_carrier_ext_count;
+  bit [31:0] rx_pause_xon_count; 
+  bit [31:0] rx_pause_xoff_count;
+  bit [31:0] rx_control_pkt_count;
   
 } counters;
